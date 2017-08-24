@@ -1,5 +1,6 @@
 # elm-word
 
+[![elm-package](https://img.shields.io/badge/elm-1.0.0-blue.svg)](http://package.elm-lang.org/packages/ktonon/elm-word/latest)
 [![CircleCI](https://img.shields.io/circleci/project/github/ktonon/elm-word.svg)](https://circleci.com/gh/ktonon/elm-word)
 
 Unsigned 32 or 64 bit integers and related operations.
@@ -15,6 +16,8 @@ import Word exposing (Word(D, W))
 The following operations are provided.
 
 * `add` - modulo addition
+* `xor` - bitwise xor
+* `complement` - bitwise inversion
 * `rotateRightBy` - [rotate right][]
 * `shiftRightZfBy` - [logical shift right][]
 
