@@ -1,0 +1,8 @@
+{
+  "root": "../src",
+  "tests": [
+      "Word",
+      "Word.Bytes",
+      "Word.Helpers"
+  ]
+}
