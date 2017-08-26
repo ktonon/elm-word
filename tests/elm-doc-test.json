@@ -3,6 +3,7 @@
   "tests": [
       "Word",
       "Word.Bytes",
-      "Word.Helpers"
+      "Word.Helpers",
+      "Word.Hex"
   ]
 }

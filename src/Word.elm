@@ -11,7 +11,6 @@ module Word
         , shiftRightZfBy
         , sizeInBytes
         , toBytes
-        , toHex
         , xor
         , zero
         )
@@ -34,7 +33,7 @@ It contains the minimal set of functions required by those algorithms.
 Examples below assume the following imports:
 
     import Array
-    import Byte exposing (Byte)
+    import Word.Hex as Hex
 
 
 ## Types
@@ -44,12 +43,12 @@ Examples below assume the following imports:
 
 ## Constructors
 
-@docs fromBytes, fromUTF8, zero
+@docs fromBytes,fromUTF8, zero
 
 
 ## Conversions
 
-@docs toBytes, toHex
+@docs toBytes
 
 
 ## Arithmetic
@@ -70,9 +69,16 @@ Examples below assume the following imports:
 
 import Array exposing (Array)
 import Bitwise
-import Byte exposing (Byte)
 import Word.Bytes as Bytes
-import Word.Helpers exposing (..)
+import Word.Helpers
+    exposing
+        ( lowMask
+        , rotatedLowBits
+        , safeAnd
+        , safeShiftLeftBy
+        , safeShiftRightZfBy
+        , safeXor
+        )
 
 
 {-| Unsigned integers of size 32 or 64 bits.
@@ -128,29 +134,89 @@ zero wordSize =
 
 {-| Convert a list of bytes to an array of words of the given size.
 
-    fromBytes Bit32 ([ 0xDE, 0xAD, 0xBE, 0xEF ] |> List.map Byte.fromInt)
+    fromBytes Bit32 [ 0xDE, 0xAD, 0xBE, 0xEF ]
     --> [ W 0xDEADBEEF ] |> Array.fromList
 
-    fromBytes Bit32 (
+    fromBytes Bit32
         [ 0xDE, 0xAD, 0xBE, 0xEF
         , 0x01, 0x23, 0x45, 0x67
-        ] |> List.map Byte.fromInt)
+        ]
     --> [ W 0xDEADBEEF, W 0x01234567 ] |> Array.fromList
 
-    fromBytes Bit64 (
+    fromBytes Bit64
         [ 0xDE, 0xAD, 0xBE, 0xEF
         , 0x01, 0x23, 0x45, 0x67
-        ] |> List.map Byte.fromInt)
+        ]
     --> [ D 0xDEADBEEF 0x01234567 ] |> Array.fromList
 
 -}
-fromBytes : Size -> List Byte -> Array Word
+fromBytes : Size -> List Int -> Array Word
 fromBytes wordSize bytes =
-    chunkedMap
-        wordFromBytes
-        (sizeInBytes wordSize)
-        (Byte.fromInt 0)
-        bytes
+    accWords wordSize bytes Array.empty
+
+
+accWords : Size -> List Int -> Array Word -> Array Word
+accWords wordSize bytes acc =
+    case ( wordSize, bytes ) of
+        ( Bit32, x3 :: x2 :: x1 :: x0 :: rest ) ->
+            acc
+                |> Array.push
+                    (W
+                        (int32FromBytes ( x3, x2, x1, x0 ))
+                    )
+                |> accWords wordSize rest
+
+        ( Bit64, x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ) ->
+            acc
+                |> Array.push
+                    (D
+                        (int32FromBytes ( x7, x6, x5, x4 ))
+                        (int32FromBytes ( x3, x2, x1, x0 ))
+                    )
+                |> accWords wordSize rest
+
+        ( _, [] ) ->
+            acc
+
+        ( Bit32, rest ) ->
+            acc
+                |> Array.push
+                    (W (int32FromBytes (pad4 rest)))
+
+        ( Bit64, rest ) ->
+            acc
+                |> Array.push
+                    (D
+                        (int32FromBytes (pad4 (List.take 4 rest)))
+                        (int32FromBytes (pad4 (List.drop 4 rest)))
+                    )
+
+
+pad4 : List Int -> ( Int, Int, Int, Int )
+pad4 bytes =
+    case bytes of
+        [ x3, x2, x1, x0 ] ->
+            ( x3, x2, x1, x0 )
+
+        [ x3, x2, x1 ] ->
+            ( x3, x2, x1, 0 )
+
+        [ x3, x2 ] ->
+            ( x3, x2, 0, 0 )
+
+        [ x3 ] ->
+            ( x3, 0, 0, 0 )
+
+        _ ->
+            ( 0, 0, 0, 0 )
+
+
+int32FromBytes : ( Int, Int, Int, Int ) -> Int
+int32FromBytes ( x3, x2, x1, x0 ) =
+    x0
+        + (x1 * 2 ^ 8)
+        + (x2 * 2 ^ 16)
+        + (x3 * 2 ^ 24)
 
 
 {-| Convert a UTF8 string to an array of words of the given size.
@@ -175,43 +241,19 @@ fromUTF8 wordSize =
     Bytes.fromUTF8 >> fromBytes wordSize
 
 
-wordFromBytes : List Byte -> Word
-wordFromBytes bytes =
-    case bytes of
-        [ a, b, c, d ] ->
-            W
-                (singleFromFourple ( a, b, c, d ))
-
-        [ a, b, c, d, f, g, h, i ] ->
-            D
-                (singleFromFourple ( a, b, c, d ))
-                (singleFromFourple ( f, g, h, i ))
-
-        _ ->
-            Mismatch
-
-
-singleFromFourple : ( Byte, Byte, Byte, Byte ) -> Int
-singleFromFourple ( a, b, c, d ) =
-    Byte.toInt d
-        |> (+) (2 ^ 8 * Byte.toInt c)
-        |> (+) (2 ^ 16 * Byte.toInt b)
-        |> (+) (2 ^ 24 * Byte.toInt a)
-
-
 {-| Convert an array of words to a list of bytes.
 
     [ W 0 ] |> Array.fromList |> toBytes
-    --> [ 0, 0, 0, 0 ] |> List.map Byte.fromInt
+    --> [ 0, 0, 0, 0 ]
 
     [ D 0 0 ] |> Array.fromList |> toBytes
-    --> [ 0, 0, 0, 0, 0, 0, 0, 0 ] |> List.map Byte.fromInt
+    --> [ 0, 0, 0, 0, 0, 0, 0, 0 ]
 
     [ W 16843010 ] |> Array.fromList |> toBytes
-    --> [ 1, 1, 1, 2 ] |> List.map Byte.fromInt
+    --> [ 1, 1, 1, 2 ]
 
 -}
-toBytes : Array Word -> List Byte
+toBytes : Array Word -> List Int
 toBytes =
     Array.toList
         >> List.concatMap
@@ -230,43 +272,25 @@ toBytes =
             )
 
 
-{-| Convert a list of words to a string of hexadecimal characters.
-
-    [ D 0xDEADBEEF 0x00112233, D 0x44556677 0x8899AABB ]
-        |> Array.fromList
-        |> toHex
-    --> "deadbeef00112233445566778899aabb"
-
--}
-toHex : Array Word -> String
-toHex =
-    toBytes >> Bytes.toHex
-
-
 
 -- OPERATIONS
 
 
 {-| Modulo adds two words of the same type.
 
-    add (W 0x80000000)
-        (W 0x7FFFFFFF)
-    --> W 0xFFFFFFFF
+    add (W 0x80000000) (W 0x7FFFFFFF) |> Hex.fromWord
+    --> "ffffffff"
 
-    add (W 0x80000000)
-        (W 0x80000003)
-    --> W 3
+    add (W 0x80000000) (W 0x80000003) |> Hex.fromWord
+    --> "00000003"
 
-    add (D 0 0xFFFFFFFF)
-        (D 0 1)
-    --> D 1 0
+    add (D 0 0xFFFFFFFF) (D 0 1) |> Hex.fromWord
+    --> "0000000100000000"
 
-    add (D 0xFFFFFFFF 0xFFFFFFFF)
-        (D 0 2)
-    --> D 0 1
+    add (D 0xFFFFFFFF 0xFFFFFFFF) (D 0 2) |> Hex.fromWord
+    --> "0000000000000001"
 
-    add (W 0)
-        (D 0 0)
+    add (W 0) (D 0 0)
     --> Mismatch
 
 -}
@@ -297,11 +321,11 @@ add x y =
 
 <https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry>
 
-    rotateRightBy 4 (W 0xDEADBEEF)
-    --> W 0xFDEADBEE
+    rotateRightBy 4 (W 0xDEADBEEF) |> Hex.fromWord
+    --> "fdeadbee"
 
-    rotateRightBy 4 (D 0xDDEEAADD 0xBBEEAAFF)
-    --> D 0xFDDEEAAD 0xDBBEEAAF
+    rotateRightBy 4 (D 0xDDEEAADD 0xBBEEAAFF) |> Hex.fromWord
+    --> "fddeeaaddbbeeaaf"
 
     rotateRightBy 7 Mismatch
     --> Mismatch
@@ -345,18 +369,35 @@ rotateRightBy unboundN word =
             Mismatch
 
 
+dShiftRightZfBy : Int -> ( Int, Int ) -> ( Int, Int )
+dShiftRightZfBy n ( xh, xl ) =
+    if n > 32 then
+        ( 0
+        , safeShiftRightZfBy (n - 32) xh
+        )
+    else
+        ( safeShiftRightZfBy n xh
+        , (+)
+            (safeShiftRightZfBy n xl)
+            (xh
+                |> Bitwise.and (lowMask n)
+                |> safeShiftLeftBy (32 - n)
+            )
+        )
+
+
 {-| Shift bits to the right by a given offset, filling new bits with zeros.
 
 <https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift>
 
-    shiftRightZfBy 9 (W 0xFFFF)
-    --> W 0x7F
+    shiftRightZfBy 9 (W 0xFFFF) |> Hex.fromWord
+    --> "0000007f"
 
-    shiftRightZfBy 142 (W 0xFFFF)
-    --> W 0
+    shiftRightZfBy 32 (W 0xFFFF) |> Hex.fromWord
+    --> "00000000"
 
-    shiftRightZfBy 8 (D 0x01234567 0x89abcdef)
-    --> D 0x00012345 0x6789abcd
+    shiftRightZfBy 8 (D 0x01234567 0x89abcdef) |> Hex.fromWord
+    --> "000123456789abcd"
 
     shiftRightZfBy 4 Mismatch
     --> Mismatch
@@ -384,13 +425,13 @@ shiftRightZfBy n word =
 
     Word.and
         (W 0xFF00FF00)
-        (W 0xFFFF0000)
-    -->  W 0xFF000000
+        (W 0xFFFF0000) |> Hex.fromWord
+    --> "ff000000"
 
     Word.and
         (D 0xFF00FF00 0xFFFF0000)
-        (D 0xFFFF0000 0xFF00FF00)
-    -->  D 0xFF000000 0xFF000000
+        (D 0xFFFF0000 0xFF00FF00) |> Hex.fromWord
+    --> "ff000000ff000000"
 
 -}
 and : Word -> Word -> Word
@@ -412,13 +453,13 @@ and x y =
 
     Word.xor
         (W 0xFF00FF00)
-        (W 0x00FFFF00)
-    -->  W 0xFFFF0000
+        (W 0x00FFFF00) |> Hex.fromWord
+    --> "ffff0000"
 
     Word.xor
         (D 0xFF00FF00 0x00FFFF00)
-        (D 0x00FFFF00 0xFF00FF00)
-    -->  D 0xFFFF0000 0xFFFF0000
+        (D 0x00FFFF00 0xFF00FF00) |> Hex.fromWord
+    --> "ffff0000ffff0000"
 
 -}
 xor : Word -> Word -> Word
@@ -439,24 +480,24 @@ xor x y =
 {-| Bitwise complement.
 
     Word.complement
-        (W 0x00FF00FF)
-    -->  W 0xFF00FF00
+        (W 0x00FF00FF) |> Hex.fromWord
+    --> "ff00ff00"
 
     Word.complement
-        (D 0x00FF00FF 0x00FF00FF)
-    -->  D 0xFF00FF00 0xFF00FF00
+        (D 0x00FF00FF 0x00FF00FF) |> Hex.fromWord
+    --> "ff00ff00ff00ff00"
 
 -}
 complement : Word -> Word
 complement x =
     case x of
         W x ->
-            W <| safeComplement x
+            W <| Bitwise.complement x
 
         D xh xl ->
             D
-                (safeComplement xh)
-                (safeComplement xl)
+                (Bitwise.complement xh)
+                (Bitwise.complement xl)
 
         _ ->
             Mismatch
@@ -464,23 +505,6 @@ complement x =
 
 
 -- HELPERS
-
-
-dShiftRightZfBy : Int -> ( Int, Int ) -> ( Int, Int )
-dShiftRightZfBy n ( xh, xl ) =
-    if n > 32 then
-        ( 0
-        , safeShiftRightZfBy (n - 32) xh
-        )
-    else
-        ( safeShiftRightZfBy n xh
-        , (+)
-            (safeShiftRightZfBy n xl)
-            (xh
-                |> Bitwise.and (lowMask n)
-                |> safeShiftLeftBy (32 - n)
-            )
-        )
 
 
 rem32 : Int -> Int

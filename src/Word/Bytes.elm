@@ -1,15 +1,14 @@
-module Word.Bytes exposing (ByteCount, fromHex, fromInt, fromUTF8, toHex)
+module Word.Bytes exposing (ByteCount, fromInt, fromUTF8)
 
 {-| Helper functions for creating lists of bytes.
 
-    import Byte
+    import Word.Hex as Hex
 
-@docs ByteCount, fromInt, fromUTF8, fromHex, toHex
+@docs ByteCount, fromInt, fromUTF8
 
 -}
 
 import Bitwise
-import Byte exposing (Byte)
 import Char
 
 
@@ -21,20 +20,19 @@ type alias ByteCount =
 
 {-| Convert a character into a list of bytes
 
-    fromUTF8 "a"
-    --> [ Byte.fromInt 97 ]
+    fromUTF8 "a" |> Hex.fromByteList
+    --> "61"
 
     fromUTF8 "I ❤ cheese"
     --> [ 73, 32,
     -->   226, 157, 164,
     -->   32, 99, 104, 101, 101, 115, 101 ]
-    --> |> List.map Byte.fromInt
 
     fromUTF8 "dѐf"
-    --> [ 100, 209, 144, 102 ] |> List.map Byte.fromInt
+    --> [ 100, 209, 144, 102 ]
 
 -}
-fromUTF8 : String -> List Byte
+fromUTF8 : String -> List Int
 fromUTF8 =
     String.toList
         >> List.foldl
@@ -42,7 +40,6 @@ fromUTF8 =
                 List.append acc (char |> Char.toCode |> splitUtf8)
             )
             []
-        >> List.map Byte.fromInt
 
 
 splitUtf8 : Int -> List Int
@@ -62,54 +59,51 @@ splitUtf8 x =
 
 {-| Split an integer value into a list of bytes with the given length.
 
-    fromInt 4 0
-    --> [ 0, 0, 0, 0 ] |> List.map Byte.fromInt
+    fromInt 4 0 |> Hex.fromByteList
+    --> "00000000"
 
-    fromInt 4 1
-    --> [ 0, 0, 0, 1 ] |> List.map Byte.fromInt
+    fromInt 4 1 |> Hex.fromByteList
+    --> "00000001"
 
-    fromInt 2 2
-    --> [ 0, 2 ] |> List.map Byte.fromInt
+    fromInt 2 2 |> Hex.fromByteList
+    --> "0002"
 
-    fromInt 1 255
-    --> [ 255 ] |> List.map Byte.fromInt
+    fromInt 1 255 |> Hex.fromByteList
+    --> "ff"
 
-    fromInt 4 256
-    --> [ 0, 0, 1, 0 ] |> List.map Byte.fromInt
+    fromInt 4 256 |> Hex.fromByteList
+    --> "00000100"
 
-    fromInt 4 65537
-    --> [ 0, 1, 0, 1 ] |> List.map Byte.fromInt
+    fromInt 4 65537 |> Hex.fromByteList
+    --> "00010001"
 
-    fromInt 4 16777216
-    --> [ 1, 0, 0, 0 ] |> List.map Byte.fromInt
+    fromInt 4 16777216 |> Hex.fromByteList
+    --> "01000000"
 
-    fromInt 8 72058693549555970
-    --> [ 1, 0, 1, 0, 0, 0, 1, 0 ] |> List.map Byte.fromInt
+    fromInt 8 344 |> Hex.fromByteList
+    --> "0000000000000158"
+
+    fromInt 16 344 |> Hex.fromByteList
+    --> "00000000000000000000000000000158"
 
 -}
-fromInt : ByteCount -> Int -> List Byte
-fromInt pad val =
-    let
-        n =
-            if val > 1 then
-                logBase 2 (toFloat val)
-                    / 8
-                    |> floor
-            else
-                0
-    in
-    List.range 0 n
-        |> List.map
-            (\b ->
-                val
-                    // (2 ^ (b * 8))
-                    |> Byte.fromInt
+fromInt : ByteCount -> Int -> List Int
+fromInt byteCount value =
+    if byteCount > 4 then
+        List.append
+            (fromInt (byteCount - 4) (value // 2 ^ 32))
+            (fromInt 4 (Bitwise.and 0xFFFFFFFF value))
+    else
+        List.map
+            (\i ->
+                value
+                    |> Bitwise.shiftRightZfBy ((byteCount - i) * 2 ^ 3)
+                    |> Bitwise.and 0xFF
             )
-        |> List.reverse
-        |> fixLength pad 0
+            (List.range 1 byteCount)
 
 
-fixLength : Int -> Int -> List Byte -> List Byte
+fixLength : Int -> Int -> List Int -> List Int
 fixLength byteCount val list =
     case compare (List.length list) byteCount of
         EQ ->
@@ -117,151 +111,8 @@ fixLength byteCount val list =
 
         LT ->
             List.append
-                (List.repeat (byteCount - List.length list) (Byte.fromInt val))
+                (List.repeat (byteCount - List.length list) val)
                 list
 
         GT ->
             List.take byteCount list
-
-
-{-| Convert a list of bytes to a string of hexadecimal characters.
-
-    [ 0xDE, 0xAD, 0xBE, 0xEF ]
-        |> List.map Byte.fromInt
-        |> toHex
-    --> "deadbeef"
-
--}
-toHex : List Byte -> String
-toHex =
-    List.foldl
-        (\byte acc ->
-            List.append acc
-                [ byte |> Byte.toInt |> Bitwise.shiftRightZfBy 4 |> Byte.fromInt |> charToHex
-                , byte |> charToHex
-                ]
-        )
-        []
-        >> String.fromList
-
-
-charToHex : Byte -> Char
-charToHex byte =
-    let
-        x2 =
-            byte |> Byte.and (Byte.fromInt 0x0F) |> Byte.toInt
-    in
-    (x2
-        + (if x2 < 10 then
-            Char.toCode '0'
-           else
-            -10 + Char.toCode 'a'
-          )
-    )
-        |> Char.fromCode
-
-
-{-| Attempt to interpret a string as a sequence of hexadecimal encoded bytes.
-
-Fails for non-hex strings.
-
-    fromHex "not hex"
-    --> []
-
-Each byte requires 2 characters, so odd length strings fail
-
-    fromHex "000"
-    --> []
-
-Some passing examples
-
-    fromHex "00"
-    --> [ 0x00 ] |> List.map Byte.fromInt
-
-    fromHex "010203040506DEADbeef"
-    --> [ 0x01, 0x02, 0x03, 0x04
-    --> , 0x05, 0x06, 0xDE, 0xAD
-    --> , 0xBE, 0xEF
-    --> ] |> List.map Byte.fromInt
-
--}
-fromHex : String -> List Byte
-fromHex string =
-    fromHex_ (string |> String.toLower |> String.toList) []
-
-
-fromHex_ : List Char -> List Byte -> List Byte
-fromHex_ chars acc =
-    case chars of
-        h :: l :: rest ->
-            byteFromHex h l
-                |> (\byte -> List.append acc [ byte ])
-                |> fromHex_ rest
-
-        [] ->
-            acc
-
-        _ ->
-            []
-
-
-byteFromHex : Char -> Char -> Byte
-byteFromHex hChar lChar =
-    case ( hexFromChar hChar, hexFromChar lChar ) of
-        ( h, l ) ->
-            Byte.fromInt <| h * 2 ^ 4 + l
-
-
-hexFromChar : Char -> Int
-hexFromChar char =
-    case char of
-        '0' ->
-            0
-
-        '1' ->
-            1
-
-        '2' ->
-            2
-
-        '3' ->
-            3
-
-        '4' ->
-            4
-
-        '5' ->
-            5
-
-        '6' ->
-            6
-
-        '7' ->
-            7
-
-        '8' ->
-            8
-
-        '9' ->
-            9
-
-        'a' ->
-            10
-
-        'b' ->
-            11
-
-        'c' ->
-            12
-
-        'd' ->
-            13
-
-        'e' ->
-            14
-
-        'f' ->
-            15
-
-        _ ->
-            0

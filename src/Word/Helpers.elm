@@ -3,48 +3,23 @@ module Word.Helpers exposing (..)
 {-| Helpers functions.
 
     import Array
-    import Byte
+    import Word.Hex as Hex
 
 -}
 
-import Array exposing (Array)
 import Bitwise
-
-
-{-| A bitmask for the lower `n` bits.
-
-    lowMask 0
-    --> 0x00000000
-
-    lowMask 1
-    --> 0x00000001
-
-    lowMask 2
-    --> 0x00000003
-
-    lowMask 4
-    --> 0x0000000F
-
-    lowMask 16
-    --> 0x0000FFFF
-
--}
-lowMask : Int -> Int
-lowMask n =
-    List.range 0 (n - 1)
-        |> List.foldl (\i acc -> acc + 2 ^ i) 0
 
 
 {-| Rotate the low `n` bits of a 32 bit value and adds as high bits to another.
 
-    rotatedLowBits 2 0xFFFFFFFF 0xBEEF
-    --> 0xC000BEEF
+    rotatedLowBits 2 0xFFFFFFFF 0xBEEF |> Hex.fromInt 8
+    --> "c000beef"
 
-    rotatedLowBits 2 0x03 0xBEEF
-    --> 0xC000BEEF
+    rotatedLowBits 2 0x03 0xBEEF |> Hex.fromInt 8
+    --> "c000beef"
 
-    rotatedLowBits 28 0xFFFFFFFF 7
-    --> 0xFFFFFFF7
+    rotatedLowBits 28 0xFFFFFFFF 7 |> Hex.fromInt 8
+    --> "fffffff7"
 
 -}
 rotatedLowBits : Int -> Int -> Int -> Int
@@ -58,7 +33,8 @@ rotatedLowBits n val =
 
 safeShiftRightZfBy : Int -> Int -> Int
 safeShiftRightZfBy n val =
-    if n > 31 then
+    if n >= 32 then
+        -- `shiftRightZfBy 32 0xffff` returns `65535`
         0
     else
         Bitwise.shiftRightZfBy n val
@@ -66,148 +42,135 @@ safeShiftRightZfBy n val =
 
 {-| Unsigned shift left by `n`.
 
-    safeShiftLeftBy 1 0x7FFFFFFF
-    --> 0xFFFFFFFE
+    safeShiftLeftBy 1 0x7FFFFFFF |> Hex.fromInt 8
+    --> "fffffffe"
 
-    safeShiftLeftBy 1 0x3FFFFFFF
-    --> 0x7FFFFFFE
+    safeShiftLeftBy 1 0x3FFFFFFF |> Hex.fromInt 8
+    --> "7ffffffe"
 
-    safeShiftLeftBy 2 0x3FFFFFFF
-    --> 0xFFFFFFFC
+    safeShiftLeftBy 2 0x3FFFFFFF |> Hex.fromInt 8
+    --> "fffffffc"
 
-    safeShiftLeftBy 31 0xFFFFFFFF
-    --> 0x80000000
+    safeShiftLeftBy 31 0xFFFFFFFF |> Hex.fromInt 8
+    --> "80000000"
 
 -}
 safeShiftLeftBy : Int -> Int -> Int
 safeShiftLeftBy n val =
-    (val * 2 ^ n) % 2 ^ 32
+    Bitwise.shiftLeftBy n val
+        % 0x0000000100000000
 
 
 safeAnd : Int -> Int -> Int
-safeAnd =
-    safeBitwise Bitwise.and
+safeAnd x y =
+    Bitwise.and x y % 0x0000000100000000
 
 
 safeXor : Int -> Int -> Int
-safeXor =
-    safeBitwise Bitwise.xor
+safeXor x y =
+    Bitwise.xor x y % 0x0000000100000000
 
 
-safeBitwise : (Int -> Int -> Int) -> Int -> Int -> Int
-safeBitwise op x y =
-    let
-        h =
-            2 ^ 16
-
-        l =
-            0xFFFF
-    in
-    (+)
-        (op (x // h) (y // h) |> (*) h)
-        (op
-            (Bitwise.and x l)
-            (Bitwise.and y l)
-        )
-
-
-safeComplement : Int -> Int
-safeComplement x =
-    let
-        h =
-            2 ^ 16
-
-        l =
-            0xFFFF
-    in
-    (+)
-        (Bitwise.complement (x // h) |> Bitwise.and l |> (*) h)
-        (Bitwise.complement (Bitwise.and x l) |> Bitwise.and l)
-
-
-{-| Maximum unsigned 32-bit integer
+{-| A bitmask for the lower `n` bits.
 -}
-max32 : Int
-max32 =
-    0xFFFFFFFF
+lowMask : Int -> Int
+lowMask n =
+    case n of
+        0 ->
+            0x00
 
+        1 ->
+            0x01
 
-{-| Split list into smaller lists of length `k`, starting from the left.
+        2 ->
+            0x03
 
-    chunkedMap identity 3 0 <| List.range 1 9
-    --> [ [ 1, 2, 3 ], [ 4, 5, 6 ], [ 7, 8, 9 ] ] |> Array.fromList
+        3 ->
+            0x07
 
-    chunkedMap identity 3 0 [ 1, 2, 3, 4, 5, 6, 7, 8 ]
-    --> [ [ 1, 2, 3 ], [ 4, 5, 6 ], [ 7, 8, 0 ] ] |> Array.fromList
+        4 ->
+            0x0F
 
-    chunkedMap identity 3 0 []
-    --> Array.empty
+        5 ->
+            0x1F
 
-    chunkedMap identity 0 0 [ 1, 2, 3 ]
-    --> Array.empty
+        6 ->
+            0x3F
 
-    chunkedMap identity -1 0 []
-    --> Array.empty
+        7 ->
+            0x7F
 
--}
-chunkedMap :
-    (List a -> b)
-    -> Int
-    -> a
-    -> List a
-    -> Array b
-chunkedMap mapper k default list =
-    chunkedMap_ mapper k default list Array.empty
+        8 ->
+            0xFF
 
+        9 ->
+            0x01FF
 
-chunkedMap_ :
-    (List a -> b)
-    -> Int
-    -> a
-    -> List a
-    -> Array b
-    -> Array b
-chunkedMap_ mapper k default list acc =
-    if k == 0 then
-        Array.empty
-    else if k < 0 then
-        Array.empty
-    else
-        case nextChunkPart k default (k - 1) [] list of
-            ( Nothing, _ ) ->
-                acc
+        10 ->
+            0x03FF
 
-            ( Just chunk, [] ) ->
-                Array.push (mapper chunk) acc
+        11 ->
+            0x07FF
 
-            ( Just chunk, rest ) ->
-                chunkedMap_ mapper
-                    k
-                    default
-                    rest
-                    (Array.push (mapper chunk) acc)
+        12 ->
+            0x0FFF
 
+        13 ->
+            0x1FFF
 
-nextChunkPart : Int -> a -> Int -> List a -> List a -> ( Maybe (List a), List a )
-nextChunkPart k default i acc list =
-    if i >= 0 then
-        case list of
-            x :: rest ->
-                nextChunkPart
-                    k
-                    default
-                    (i - 1)
-                    (List.append acc [ x ])
-                    rest
+        14 ->
+            0x3FFF
 
-            _ ->
-                if List.isEmpty acc then
-                    ( Nothing, [] )
-                else
-                    ( Just <|
-                        List.append acc
-                            (List.repeat (k - List.length acc) default)
-                    , []
-                    )
-    else
-        ( Just acc, list )
+        15 ->
+            0x7FFF
+
+        16 ->
+            0xFFFF
+
+        17 ->
+            0x0001FFFF
+
+        18 ->
+            0x0003FFFF
+
+        19 ->
+            0x0007FFFF
+
+        20 ->
+            0x000FFFFF
+
+        21 ->
+            0x001FFFFF
+
+        22 ->
+            0x003FFFFF
+
+        23 ->
+            0x007FFFFF
+
+        24 ->
+            0x00FFFFFF
+
+        25 ->
+            0x01FFFFFF
+
+        26 ->
+            0x03FFFFFF
+
+        27 ->
+            0x07FFFFFF
+
+        28 ->
+            0x0FFFFFFF
+
+        29 ->
+            0x1FFFFFFF
+
+        30 ->
+            0x3FFFFFFF
+
+        31 ->
+            0x7FFFFFFF
+
+        _ ->
+            0xFFFFFFFF

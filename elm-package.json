@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "summary": "Unsigned 32 or 64 bit integers and related operations",
     "repository": "https://github.com/ktonon/elm-word.git",
     "license": "MIT",
@@ -8,11 +8,11 @@
     ],
     "exposed-modules": [
         "Word",
-        "Word.Bytes"
+        "Word.Bytes",
+        "Word.Hex"
     ],
     "dependencies": {
-        "elm-lang/core": "5.1.1 <= v < 6.0.0",
-        "mthadley/elm-byte": "1.0.1 <= v < 2.0.0"
+        "elm-lang/core": "5.1.1 <= v < 6.0.0"
     },
     "elm-version": "0.18.0 <= v < 0.19.0"
 }
