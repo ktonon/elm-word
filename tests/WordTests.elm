@@ -9,6 +9,7 @@ import Word
         , Word(D, W)
         , add
         , fromBytes
+        , rotateLeftBy
         , rotateRightBy
         , shiftRightZfBy
         )
@@ -146,6 +147,37 @@ addTests =
                         (D 0 0)
                         (List.range 0 1000000)
                     )
+        ]
+
+
+rotateLeftByTests : Test
+rotateLeftByTests =
+    describe "rotateLeftBy"
+        [ test "32bit rotate by 32" <|
+            \_ ->
+                Expect.equal
+                    "deadbeef"
+                    (rotateLeftBy 32 (W 0xDEADBEEF) |> Hex.fromWord)
+        , test "64bit rotate by 28" <|
+            \_ ->
+                Expect.equal
+                    "f00000000fffffff"
+                    (rotateLeftBy 28 (D 0xFFFFFFFF 0x00) |> Hex.fromWord)
+        , test "64bit rotate by 32" <|
+            \_ ->
+                Expect.equal
+                    "bbeeaaffddeeaadd"
+                    (rotateLeftBy 32 (D 0xDDEEAADD 0xBBEEAAFF) |> Hex.fromWord)
+        , test "64bit rotate by 64" <|
+            \_ ->
+                Expect.equal
+                    "ddeeaaddbbeeaaff"
+                    (rotateLeftBy 64 (D 0xDDEEAADD 0xBBEEAAFF) |> Hex.fromWord)
+        , test "64bit rotate by 68" <|
+            \_ ->
+                Expect.equal
+                    "deeaaddbbeeaaffd"
+                    (rotateLeftBy 68 (D 0xDDEEAADD 0xBBEEAAFF) |> Hex.fromWord)
         ]
 
 

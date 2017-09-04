@@ -1,5 +1,5 @@
 {
-    "version": "2.0.0",
+    "version": "2.1.0",
     "summary": "Unsigned 32 or 64 bit integers and related operations",
     "repository": "https://github.com/ktonon/elm-word.git",
     "license": "MIT",

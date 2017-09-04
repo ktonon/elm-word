@@ -7,6 +7,7 @@ module Word
         , complement
         , fromBytes
         , fromUTF8
+        , rotateLeftBy
         , rotateRightBy
         , shiftRightZfBy
         , sizeInBytes
@@ -58,7 +59,7 @@ Examples below assume the following imports:
 
 ## Bitwise
 
-@docs and, xor, complement, rotateRightBy, shiftRightZfBy
+@docs and, xor, complement, rotateLeftBy, rotateRightBy, shiftRightZfBy
 
 
 ## Misc
@@ -312,6 +313,33 @@ add x y =
             D
                 (mod32 zh)
                 (mod32 zl)
+
+        _ ->
+            Mismatch
+
+
+{-| Rotate bits to the left by the given offset.
+
+<https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry>
+
+    rotateLeftBy 4 (W 0xDEADBEEF) |> Hex.fromWord
+    --> "eadbeefd"
+
+    rotateLeftBy 4 (D 0xDDEEAADD 0xBBEEAAFF) |> Hex.fromWord
+    --> "deeaaddbbeeaaffd"
+
+    rotateLeftBy 7 Mismatch
+    --> Mismatch
+
+-}
+rotateLeftBy : Int -> Word -> Word
+rotateLeftBy n word =
+    case word of
+        W _ ->
+            rotateRightBy (32 - n) word
+
+        D _ _ ->
+            rotateRightBy (64 - n) word
 
         _ ->
             Mismatch
