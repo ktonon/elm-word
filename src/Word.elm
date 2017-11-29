@@ -75,10 +75,7 @@ import Word.Helpers
     exposing
         ( lowMask
         , rotatedLowBits
-        , safeAnd
-        , safeShiftLeftBy
         , safeShiftRightZfBy
-        , safeXor
         )
 
 
@@ -129,6 +126,11 @@ zero wordSize =
             D 0 0
 
 
+low31mask : Int
+low31mask =
+    0x7FFFFFFF
+
+
 
 -- CONVERSIONS
 
@@ -136,19 +138,22 @@ zero wordSize =
 {-| Convert a list of bytes to an array of words of the given size.
 
     fromBytes Bit32 [ 0xDE, 0xAD, 0xBE, 0xEF ]
-    --> [ W 0xDEADBEEF ] |> Array.fromList
+        |> Hex.fromWordArray
+    --> "deadbeef"
 
     fromBytes Bit32
         [ 0xDE, 0xAD, 0xBE, 0xEF
         , 0x01, 0x23, 0x45, 0x67
         ]
-    --> [ W 0xDEADBEEF, W 0x01234567 ] |> Array.fromList
+        |> Hex.fromWordArray
+    --> "deadbeef01234567"
 
     fromBytes Bit64
         [ 0xDE, 0xAD, 0xBE, 0xEF
         , 0x01, 0x23, 0x45, 0x67
         ]
-    --> [ D 0xDEADBEEF 0x01234567 ] |> Array.fromList
+        |> Hex.fromWordArray
+    --> "deadbeef01234567"
 
 -}
 fromBytes : Size -> List Int -> Array Word
@@ -222,19 +227,19 @@ int32FromBytes ( x3, x2, x1, x0 ) =
 
 {-| Convert a UTF8 string to an array of words of the given size.
 
-    fromUTF8 Bit32 "I ❤ UTF strings!" |> Array.toList
-    --> [ W 0x4920E29D  -- 'I', ' ', 226, 157
-    --> , W 0xA4205554  -- 164, ' ', 'U', 'T'
-    --> , W 0x46207374  -- 'F', ' ', 's', 't'
-    --> , W 0x72696E67  -- 'r', 'i', 'n', 'g'
-    --> , W 0x73210000  -- 's', '!'
-    --> ]
+    fromUTF8 Bit32 "I ❤ UTF strings!" |> Hex.fromWordArray
+    --> [ "4920e29d"  -- 'I', ' ', 226, 157
+    --> , "a4205554"  -- 164, ' ', 'U', 'T'
+    --> , "46207374"  -- 'F', ' ', 's', 't'
+    --> , "72696e67"  -- 'r', 'i', 'n', 'g'
+    --> , "73210000"  -- 's', '!'
+    --> ] |> String.join ""
 
-    fromUTF8 Bit64 "I ❤ UTF strings!" |> Array.toList
-    --> [ D 0x4920E29D 0xA4205554 -- 'I', ' ', 226, 157, 164, ' ', 'U', 'T'
-    --> , D 0x46207374 0x72696E67 -- 'F', ' ', 's', 't', 'r', 'i', 'n', 'g'
-    --> , D 0x73210000 0x00000000 -- 's', '!'
-    --> ]
+    fromUTF8 Bit64 "I ❤ UTF strings!" |> Hex.fromWordArray
+    --> [ "4920e29d", "a4205554"  -- 'I', ' ', 226, 157, 164, ' ', 'U', 'T'
+    --> , "46207374", "72696e67"  -- 'F', ' ', 's', 't', 'r', 'i', 'n', 'g'
+    --> , "73210000", "00000000"  -- 's', '!'
+    --> ] |> String.join ""
 
 -}
 fromUTF8 : Size -> String -> Array Word
@@ -308,7 +313,7 @@ add x y =
                     xl + yl
 
                 zh =
-                    xh + yh + rem32 zl
+                    xh + yh + carry32 xl yl
             in
             D
                 (mod32 zh)
@@ -316,6 +321,28 @@ add x y =
 
         _ ->
             Mismatch
+
+
+carry32 : Int -> Int -> Int
+carry32 x y =
+    case Bitwise.shiftRightZfBy 31 x + Bitwise.shiftRightZfBy 31 y of
+        0 ->
+            0
+
+        2 ->
+            1
+
+        _ ->
+            if
+                (+)
+                    (Bitwise.and low31mask x)
+                    (Bitwise.and low31mask y)
+                    |> Bitwise.shiftRightZfBy 31
+                    |> (==) 1
+            then
+                1
+            else
+                0
 
 
 {-| Rotate bits to the left by the given offset.
@@ -409,7 +436,7 @@ dShiftRightZfBy n ( xh, xl ) =
             (safeShiftRightZfBy n xl)
             (xh
                 |> Bitwise.and (lowMask n)
-                |> safeShiftLeftBy (32 - n)
+                |> Bitwise.shiftLeftBy (32 - n)
             )
         )
 
@@ -466,12 +493,12 @@ and : Word -> Word -> Word
 and x y =
     case ( x, y ) of
         ( W x, W y ) ->
-            W <| safeAnd x y
+            W <| Bitwise.and x y
 
         ( D xh xl, D yh yl ) ->
             D
-                (safeAnd xh yh)
-                (safeAnd xl yl)
+                (Bitwise.and xh yh)
+                (Bitwise.and xl yl)
 
         _ ->
             Mismatch
@@ -494,12 +521,12 @@ xor : Word -> Word -> Word
 xor x y =
     case ( x, y ) of
         ( W x, W y ) ->
-            W <| safeXor x y
+            W <| Bitwise.xor x y
 
         ( D xh xl, D yh yl ) ->
             D
-                (safeXor xh yh)
-                (safeXor xl yl)
+                (Bitwise.xor xh yh)
+                (Bitwise.xor xl yl)
 
         _ ->
             Mismatch

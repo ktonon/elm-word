@@ -27,7 +27,7 @@ rotatedLowBits n val =
     (+)
         (val
             |> Bitwise.and (lowMask n)
-            |> safeShiftLeftBy (32 - n)
+            |> Bitwise.shiftLeftBy (32 - n)
         )
 
 
@@ -38,37 +38,6 @@ safeShiftRightZfBy n val =
         0
     else
         Bitwise.shiftRightZfBy n val
-
-
-{-| Unsigned shift left by `n`.
-
-    safeShiftLeftBy 1 0x7FFFFFFF |> Hex.fromInt 8
-    --> "fffffffe"
-
-    safeShiftLeftBy 1 0x3FFFFFFF |> Hex.fromInt 8
-    --> "7ffffffe"
-
-    safeShiftLeftBy 2 0x3FFFFFFF |> Hex.fromInt 8
-    --> "fffffffc"
-
-    safeShiftLeftBy 31 0xFFFFFFFF |> Hex.fromInt 8
-    --> "80000000"
-
--}
-safeShiftLeftBy : Int -> Int -> Int
-safeShiftLeftBy n val =
-    Bitwise.shiftLeftBy n val
-        % 0x0000000100000000
-
-
-safeAnd : Int -> Int -> Int
-safeAnd x y =
-    Bitwise.and x y % 0x0000000100000000
-
-
-safeXor : Int -> Int -> Int
-safeXor x y =
-    Bitwise.xor x y % 0x0000000100000000
 
 
 {-| A bitmask for the lower `n` bits.

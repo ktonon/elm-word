@@ -88,23 +88,27 @@ addTests =
         , test "32bit max value" <|
             \_ ->
                 Expect.equal
-                    (W max32)
-                    (add (W 0x80000000) (W 0x7FFFFFFF))
+                    "ffffffff"
+                    (add (W 0x80000000) (W 0x7FFFFFFF) |> Hex.fromWord)
         , test "64bit max value" <|
             \_ ->
                 Expect.equal
-                    (D max32 max32)
+                    "ffffffffffffffff"
                     (add
                         (D max32 (max32 - 1))
                         (D 0 1)
+                        |> Hex.fromWord
                     )
-        , test "64bit carry value" <|
+        , test
+            "64bit carry value"
+          <|
             \_ ->
                 Expect.equal
-                    (D 1 (max32 - 1))
+                    "00000001fffffffe"
                     (add
                         (D 0 max32)
                         (D 0 max32)
+                        |> Hex.fromWord
                     )
         , test "32bit wrap" <|
             \_ ->
@@ -117,35 +121,39 @@ addTests =
         , test "64bit wrap" <|
             \_ ->
                 Expect.equal
-                    (D 0 1)
+                    "0000000000000000"
                     (add
                         (D max32 max32)
-                        (D 0 2)
+                        (D 0 1)
+                        |> Hex.fromWord
                     )
         , test "32bit add 2 largest values" <|
             \_ ->
                 Expect.equal
-                    (W (max32 - 1))
+                    "fffffffe"
                     (add
                         (W max32)
                         (W max32)
+                        |> Hex.fromWord
                     )
         , test "64bit add 2 largest values" <|
             \_ ->
                 Expect.equal
-                    (D max32 (max32 - 1))
+                    "fffffffffffffffe"
                     (add
                         (D max32 max32)
                         (D max32 max32)
+                        |> Hex.fromWord
                     )
         , test "64bit add performance" <|
             \_ ->
                 Expect.equal
-                    (D 0x74 0x6A5A2920)
+                    "000000746a5a2920"
                     (List.foldl
                         (D 0 >> add)
                         (D 0 0)
                         (List.range 0 1000000)
+                        |> Hex.fromWord
                     )
         ]
 
