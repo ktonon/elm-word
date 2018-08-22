@@ -1,14 +1,7 @@
-module Word.Hex
-    exposing
-        ( CharCount
-        , fromByte
-        , fromByteList
-        , fromInt
-        , fromWord
-        , fromWordArray
-        , toByteList
-        , toWordArray
-        )
+module Word.Hex exposing
+    ( CharCount, fromInt, fromByte, fromWord, fromByteList, fromWordArray
+    , toByteList, toWordArray
+    )
 
 {-| Convert to and from strings of hexadecimal characters.
 
@@ -69,6 +62,7 @@ fromIntAccumulator x =
         Char.fromCode
             (if x < 10 then
                 x + 48
+
              else
                 x + 97 - 10
             )
@@ -209,20 +203,20 @@ accHex2 chars acc =
 accHex8 : List Char -> Array Word -> Array Word
 accHex8 chars acc =
     case chars of
-        x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ->
+        c7 :: c6 :: c5 :: c4 :: c3 :: c2 :: c1 :: c0 :: rest ->
             acc
                 |> Array.push
                     (W
                         (toInt32
-                            ( hexFromChar x7
-                            , hexFromChar x6
-                            , hexFromChar x5
-                            , hexFromChar x4
-                            , hexFromChar x3
-                            , hexFromChar x2
-                            , hexFromChar x1
-                            , hexFromChar x0
-                            )
+                            { x7 = hexFromChar c7
+                            , x6 = hexFromChar c6
+                            , x5 = hexFromChar c5
+                            , x4 = hexFromChar c4
+                            , x3 = hexFromChar c3
+                            , x2 = hexFromChar c2
+                            , x1 = hexFromChar c1
+                            , x0 = hexFromChar c0
+                            }
                         )
                     )
                 |> accHex8 rest
@@ -237,31 +231,31 @@ accHex8 chars acc =
 accHex16 : List Char -> Array Word -> Array Word
 accHex16 chars acc =
     case chars of
-        x15 :: x14 :: x13 :: x12 :: x11 :: x10 :: x9 :: x8 :: x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ->
+        b15 :: b14 :: b13 :: b12 :: b11 :: b10 :: b9 :: b8 :: b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: rest ->
             acc
                 |> Array.push
                     (D
                         (toInt32
-                            ( hexFromChar x15
-                            , hexFromChar x14
-                            , hexFromChar x13
-                            , hexFromChar x12
-                            , hexFromChar x11
-                            , hexFromChar x10
-                            , hexFromChar x9
-                            , hexFromChar x8
-                            )
+                            { x7 = hexFromChar b15
+                            , x6 = hexFromChar b14
+                            , x5 = hexFromChar b13
+                            , x4 = hexFromChar b12
+                            , x3 = hexFromChar b11
+                            , x2 = hexFromChar b10
+                            , x1 = hexFromChar b9
+                            , x0 = hexFromChar b8
+                            }
                         )
                         (toInt32
-                            ( hexFromChar x7
-                            , hexFromChar x6
-                            , hexFromChar x5
-                            , hexFromChar x4
-                            , hexFromChar x3
-                            , hexFromChar x2
-                            , hexFromChar x1
-                            , hexFromChar x0
-                            )
+                            { x7 = hexFromChar b7
+                            , x6 = hexFromChar b6
+                            , x5 = hexFromChar b5
+                            , x4 = hexFromChar b4
+                            , x3 = hexFromChar b3
+                            , x2 = hexFromChar b2
+                            , x1 = hexFromChar b1
+                            , x0 = hexFromChar b0
+                            }
                         )
                     )
                 |> accHex16 rest
@@ -282,9 +276,11 @@ hexFromChar char =
     if x < 65 then
         -- assume valid 48 - 57 ('0' - '9')
         x - 48
+
     else if x > 70 then
         -- assume valid 97 - 102 ('a' - 'f')
         x - 87
+
     else
         x - 55
 
@@ -303,8 +299,8 @@ fromArray toHex =
         ""
 
 
-toInt32 : ( Int, Int, Int, Int, Int, Int, Int, Int ) -> Int
-toInt32 ( x7, x6, x5, x4, x3, x2, x1, x0 ) =
+toInt32 : { x7 : Int, x6 : Int, x5 : Int, x4 : Int, x3 : Int, x2 : Int, x1 : Int, x0 : Int } -> Int
+toInt32 { x7, x6, x5, x4, x3, x2, x1, x0 } =
     x0
         + (x1 * 2 ^ 4)
         + (x2 * 2 ^ 8)

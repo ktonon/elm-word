@@ -1,20 +1,11 @@
-module Word
-    exposing
-        ( Size(..)
-        , Word(..)
-        , add
-        , and
-        , complement
-        , fromBytes
-        , fromUTF8
-        , rotateLeftBy
-        , rotateRightBy
-        , shiftRightZfBy
-        , sizeInBytes
-        , toBytes
-        , xor
-        , zero
-        )
+module Word exposing
+    ( Word(..), Size(..)
+    , fromBytes, fromUTF8, zero
+    , toBytes
+    , add
+    , and, xor, complement, rotateLeftBy, rotateRightBy, shiftRightZfBy
+    , sizeInBytes
+    )
 
 {-| Unsigned 32 or 64 bit integers and related operations.
 
@@ -44,7 +35,7 @@ Examples below assume the following imports:
 
 ## Constructors
 
-@docs fromBytes,fromUTF8, zero
+@docs fromBytes, fromUTF8, zero
 
 
 ## Conversions
@@ -164,20 +155,20 @@ fromBytes wordSize bytes =
 accWords : Size -> List Int -> Array Word -> Array Word
 accWords wordSize bytes acc =
     case ( wordSize, bytes ) of
-        ( Bit32, x3 :: x2 :: x1 :: x0 :: rest ) ->
+        ( Bit32, b3 :: b2 :: b1 :: b0 :: rest ) ->
             acc
                 |> Array.push
                     (W
-                        (int32FromBytes ( x3, x2, x1, x0 ))
+                        (int32FromBytes { x3 = b3, x2 = b2, x1 = b1, x0 = b0 })
                     )
                 |> accWords wordSize rest
 
-        ( Bit64, x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ) ->
+        ( Bit64, b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: rest ) ->
             acc
                 |> Array.push
                     (D
-                        (int32FromBytes ( x7, x6, x5, x4 ))
-                        (int32FromBytes ( x3, x2, x1, x0 ))
+                        (int32FromBytes { x3 = b7, x2 = b6, x1 = b5, x0 = b4 })
+                        (int32FromBytes { x3 = b3, x2 = b2, x1 = b1, x0 = b0 })
                     )
                 |> accWords wordSize rest
 
@@ -198,27 +189,27 @@ accWords wordSize bytes acc =
                     )
 
 
-pad4 : List Int -> ( Int, Int, Int, Int )
+pad4 : List Int -> { x3 : Int, x2 : Int, x1 : Int, x0 : Int }
 pad4 bytes =
     case bytes of
-        [ x3, x2, x1, x0 ] ->
-            ( x3, x2, x1, x0 )
+        [ b3, b2, b1, b0 ] ->
+            { x3 = b3, x2 = b2, x1 = b1, x0 = b0 }
 
-        [ x3, x2, x1 ] ->
-            ( x3, x2, x1, 0 )
+        [ b3, b2, b1 ] ->
+            { x3 = b3, x2 = b2, x1 = b1, x0 = 0 }
 
-        [ x3, x2 ] ->
-            ( x3, x2, 0, 0 )
+        [ b3, b2 ] ->
+            { x3 = b3, x2 = b2, x1 = 0, x0 = 0 }
 
-        [ x3 ] ->
-            ( x3, 0, 0, 0 )
+        [ b3 ] ->
+            { x3 = b3, x2 = 0, x1 = 0, x0 = 0 }
 
         _ ->
-            ( 0, 0, 0, 0 )
+            { x3 = 0, x2 = 0, x1 = 0, x0 = 0 }
 
 
-int32FromBytes : ( Int, Int, Int, Int ) -> Int
-int32FromBytes ( x3, x2, x1, x0 ) =
+int32FromBytes : { x3 : Int, x2 : Int, x1 : Int, x0 : Int } -> Int
+int32FromBytes { x3, x2, x1, x0 } =
     x0
         + (x1 * 2 ^ 8)
         + (x2 * 2 ^ 16)
@@ -303,9 +294,9 @@ toBytes =
 add : Word -> Word -> Word
 add x y =
     case ( x, y ) of
-        ( W x, W y ) ->
+        ( W xw, W yw ) ->
             W <|
-                mod32 (x + y)
+                mod32 (xw + yw)
 
         ( D xh xl, D yh yl ) ->
             let
@@ -341,13 +332,14 @@ carry32 x y =
                     |> (==) 1
             then
                 1
+
             else
                 0
 
 
 {-| Rotate bits to the left by the given offset.
 
-<https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry>
+[[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
 
     rotateLeftBy 4 (W 0xDEADBEEF) |> Hex.fromWord
     --> "eadbeefd"
@@ -374,7 +366,7 @@ rotateLeftBy n word =
 
 {-| Rotate bits to the right by the given offset.
 
-<https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry>
+[[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
 
     rotateRightBy 4 (W 0xDEADBEEF) |> Hex.fromWord
     --> "fdeadbee"
@@ -392,7 +384,7 @@ rotateRightBy unboundN word =
         W x ->
             let
                 n =
-                    unboundN % 32
+                    modBy 32 unboundN
             in
             x
                 |> safeShiftRightZfBy n
@@ -402,7 +394,7 @@ rotateRightBy unboundN word =
         D xh xl ->
             let
                 n =
-                    unboundN % 64
+                    modBy 64 unboundN
             in
             if n > 32 then
                 let
@@ -413,6 +405,7 @@ rotateRightBy unboundN word =
                         dShiftRightZfBy n_ ( xl, xh )
                 in
                 D (zh |> rotatedLowBits n_ xh) zl
+
             else
                 let
                     ( zh, zl ) =
@@ -430,6 +423,7 @@ dShiftRightZfBy n ( xh, xl ) =
         ( 0
         , safeShiftRightZfBy (n - 32) xh
         )
+
     else
         ( safeShiftRightZfBy n xh
         , (+)
@@ -443,7 +437,7 @@ dShiftRightZfBy n ( xh, xl ) =
 
 {-| Shift bits to the right by a given offset, filling new bits with zeros.
 
-<https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift>
+[[https://en.wikipedia.org/wiki/Bitwise\_operation#Logical\_shift](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)
 
     shiftRightZfBy 9 (W 0xFFFF) |> Hex.fromWord
     --> "0000007f"
@@ -492,8 +486,8 @@ shiftRightZfBy n word =
 and : Word -> Word -> Word
 and x y =
     case ( x, y ) of
-        ( W x, W y ) ->
-            W <| Bitwise.and x y
+        ( W xw, W yw ) ->
+            W <| Bitwise.and xw yw
 
         ( D xh xl, D yh yl ) ->
             D
@@ -520,8 +514,8 @@ and x y =
 xor : Word -> Word -> Word
 xor x y =
     case ( x, y ) of
-        ( W x, W y ) ->
-            W <| Bitwise.xor x y
+        ( W xw, W yw ) ->
+            W <| Bitwise.xor xw yw
 
         ( D xh xl, D yh yl ) ->
             D
@@ -546,8 +540,8 @@ xor x y =
 complement : Word -> Word
 complement x =
     case x of
-        W x ->
-            W <| Bitwise.complement x
+        W xw ->
+            W <| Bitwise.complement xw
 
         D xh xl ->
             D
@@ -569,4 +563,4 @@ rem32 val =
 
 mod32 : Int -> Int
 mod32 val =
-    val % (2 ^ 32)
+    modBy (2 ^ 32) val
