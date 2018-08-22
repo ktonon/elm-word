@@ -339,7 +339,7 @@ carry32 x y =
 
 {-| Rotate bits to the left by the given offset.
 
-[[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
+[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
 
     rotateLeftBy 4 (W 0xDEADBEEF) |> Hex.fromWord
     --> "eadbeefd"
@@ -366,7 +366,7 @@ rotateLeftBy n word =
 
 {-| Rotate bits to the right by the given offset.
 
-[[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
+[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
 
     rotateRightBy 4 (W 0xDEADBEEF) |> Hex.fromWord
     --> "fdeadbee"
@@ -437,7 +437,7 @@ dShiftRightZfBy n ( xh, xl ) =
 
 {-| Shift bits to the right by a given offset, filling new bits with zeros.
 
-[[https://en.wikipedia.org/wiki/Bitwise\_operation#Logical\_shift](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)
+[https://en.wikipedia.org/wiki/Bitwise\_operation#Logical\_shift](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)
 
     shiftRightZfBy 9 (W 0xFFFF) |> Hex.fromWord
     --> "0000007f"
