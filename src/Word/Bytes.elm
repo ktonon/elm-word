@@ -46,10 +46,12 @@ splitUtf8 : Int -> List Int
 splitUtf8 x =
     if x < 128 then
         [ x ]
+
     else if x < 2048 then
         [ x |> Bitwise.and 0x07C0 |> Bitwise.shiftRightZfBy 6 |> Bitwise.or 0xC0
         , x |> Bitwise.and 0x3F |> Bitwise.or 0x80
         ]
+
     else
         [ x |> Bitwise.and 0xF000 |> Bitwise.shiftRightZfBy 12 |> Bitwise.or 0xE0
         , x |> Bitwise.and 0x0FC0 |> Bitwise.shiftRightZfBy 6 |> Bitwise.or 0x80
@@ -93,6 +95,7 @@ fromInt byteCount value =
         List.append
             (fromInt (byteCount - 4) (value // 2 ^ 32))
             (fromInt 4 (Bitwise.and 0xFFFFFFFF value))
+
     else
         List.map
             (\i ->

@@ -1,4 +1,4 @@
-module Word.Helpers exposing (..)
+module Word.Helpers exposing (lowMask, rotatedLowBits, safeShiftRightZfBy)
 
 {-| Helpers functions.
 
@@ -36,6 +36,7 @@ safeShiftRightZfBy n val =
     if n >= 32 then
         -- `shiftRightZfBy 32 0xffff` returns `65535`
         0
+
     else
         Bitwise.shiftRightZfBy n val
 
