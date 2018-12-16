@@ -2,8 +2,6 @@ module Word.Bytes exposing (ByteCount, fromInt, fromUTF8)
 
 {-| Helper functions for creating lists of bytes.
 
-    import Word.Hex as Hex
-
 @docs ByteCount, fromInt, fromUTF8
 
 -}
@@ -19,6 +17,8 @@ type alias ByteCount =
 
 
 {-| Convert a character into a list of bytes
+
+    import Word.Hex as Hex
 
     fromUTF8 "a" |> Hex.fromByteList
     --> "61"
@@ -46,12 +46,10 @@ splitUtf8 : Int -> List Int
 splitUtf8 x =
     if x < 128 then
         [ x ]
-
     else if x < 2048 then
         [ x |> Bitwise.and 0x07C0 |> Bitwise.shiftRightZfBy 6 |> Bitwise.or 0xC0
         , x |> Bitwise.and 0x3F |> Bitwise.or 0x80
         ]
-
     else
         [ x |> Bitwise.and 0xF000 |> Bitwise.shiftRightZfBy 12 |> Bitwise.or 0xE0
         , x |> Bitwise.and 0x0FC0 |> Bitwise.shiftRightZfBy 6 |> Bitwise.or 0x80
@@ -60,6 +58,8 @@ splitUtf8 x =
 
 
 {-| Split an integer value into a list of bytes with the given length.
+
+    import Word.Hex as Hex
 
     fromInt 4 0 |> Hex.fromByteList
     --> "00000000"
@@ -95,7 +95,6 @@ fromInt byteCount value =
         List.append
             (fromInt (byteCount - 4) (value // 2 ^ 32))
             (fromInt 4 (Bitwise.and 0xFFFFFFFF value))
-
     else
         List.map
             (\i ->

@@ -1,16 +1,14 @@
 module Word.Helpers exposing (lowMask, rotatedLowBits, safeShiftRightZfBy)
 
 {-| Helpers functions.
-
-    import Array
-    import Word.Hex as Hex
-
 -}
 
 import Bitwise
 
 
 {-| Rotate the low `n` bits of a 32 bit value and adds as high bits to another.
+
+    import Word.Hex as Hex
 
     rotatedLowBits 2 0xFFFFFFFF 0xBEEF |> Hex.fromInt 8
     --> "c000beef"
@@ -36,7 +34,6 @@ safeShiftRightZfBy n val =
     if n >= 32 then
         -- `shiftRightZfBy 32 0xffff` returns `65535`
         0
-
     else
         Bitwise.shiftRightZfBy n val
 

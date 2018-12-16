@@ -1,11 +1,20 @@
-module Word exposing
-    ( Word(..), Size(..)
-    , fromBytes, fromUTF8, zero
-    , toBytes
-    , add
-    , and, xor, complement, rotateLeftBy, rotateRightBy, shiftRightZfBy
-    , sizeInBytes
-    )
+module Word
+    exposing
+        ( Word(..)
+        , Size(..)
+        , fromBytes
+        , fromUTF8
+        , zero
+        , toBytes
+        , add
+        , and
+        , xor
+        , complement
+        , rotateLeftBy
+        , rotateRightBy
+        , shiftRightZfBy
+        , sizeInBytes
+        )
 
 {-| Unsigned 32 or 64 bit integers and related operations.
 
@@ -21,12 +30,6 @@ module Word exposing
 
 This package was developed to facilitate computations for [SHA-2](https://en.wikipedia.org/wiki/SHA-2).
 It contains the minimal set of functions required by those algorithms.
-
-Examples below assume the following imports:
-
-    import Array
-    import Word.Hex as Hex
-
 
 ## Types
 
@@ -128,6 +131,8 @@ low31mask =
 
 {-| Convert a list of bytes to an array of words of the given size.
 
+    import Word.Hex as Hex
+
     fromBytes Bit32 [ 0xDE, 0xAD, 0xBE, 0xEF ]
         |> Hex.fromWordArray
     --> "deadbeef"
@@ -168,7 +173,7 @@ accWords wordSize bytes acc =
                                 (int32FromBytes (FourBytes x3 x2 x1 x0))
                             )
             in
-            accWords wordSize rest acc2
+                accWords wordSize rest acc2
 
         ( Bit64, x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ) ->
             let
@@ -180,7 +185,7 @@ accWords wordSize bytes acc =
                                 (int32FromBytes (FourBytes x3 x2 x1 x0))
                             )
             in
-            accWords wordSize rest acc2
+                accWords wordSize rest acc2
 
         ( _, [] ) ->
             acc
@@ -228,6 +233,8 @@ int32FromBytes (FourBytes x3 x2 x1 x0) =
 
 {-| Convert a UTF8 string to an array of words of the given size.
 
+    import Word.Hex as Hex
+
     fromUTF8 Bit32 "I ❤ UTF strings!" |> Hex.fromWordArray
     --> [ "4920e29d"  -- 'I', ' ', 226, 157
     --> , "a4205554"  -- 164, ' ', 'U', 'T'
@@ -249,6 +256,8 @@ fromUTF8 wordSize =
 
 
 {-| Convert an array of words to a list of bytes.
+
+    import Array
 
     [ W 0 ] |> Array.fromList |> toBytes
     --> [ 0, 0, 0, 0 ]
@@ -285,6 +294,8 @@ toBytes =
 
 {-| Modulo adds two words of the same type.
 
+    import Word.Hex as Hex
+
     add (W 0x80000000) (W 0x7FFFFFFF) |> Hex.fromWord
     --> "ffffffff"
 
@@ -316,9 +327,9 @@ add wx wy =
                 zh =
                     xh + yh + carry32 xl yl
             in
-            D
-                (mod32 zh)
-                (mod32 zl)
+                D
+                    (mod32 zh)
+                    (mod32 zl)
 
         _ ->
             Mismatch
@@ -342,7 +353,6 @@ carry32 x y =
                     |> (==) 1
             then
                 1
-
             else
                 0
 
@@ -350,6 +360,8 @@ carry32 x y =
 {-| Rotate bits to the left by the given offset.
 
 [[[[[[[[[[[[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
+
+    import Word.Hex as Hex
 
     rotateLeftBy 4 (W 0xDEADBEEF) |> Hex.fromWord
     --> "eadbeefd"
@@ -378,6 +390,8 @@ rotateLeftBy n word =
 
 [[[[[[[[[[[[https://en.wikipedia.org/wiki/Bitwise\_operation#Rotate\_no\_carry](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)](https://en.wikipedia.org/wiki/Bitwise_operation#Rotate_no_carry)
 
+    import Word.Hex as Hex
+
     rotateRightBy 4 (W 0xDEADBEEF) |> Hex.fromWord
     --> "fdeadbee"
 
@@ -396,32 +410,31 @@ rotateRightBy unboundN word =
                 n =
                     modBy 32 unboundN
             in
-            x
-                |> safeShiftRightZfBy n
-                |> rotatedLowBits n x
-                |> W
+                x
+                    |> safeShiftRightZfBy n
+                    |> rotatedLowBits n x
+                    |> W
 
         D xh xl ->
             let
                 n =
                     modBy 64 unboundN
             in
-            if n > 32 then
-                let
-                    n_ =
-                        n - 32
+                if n > 32 then
+                    let
+                        n_ =
+                            n - 32
 
-                    ( zh, zl ) =
-                        dShiftRightZfBy n_ ( xl, xh )
-                in
-                D (zh |> rotatedLowBits n_ xh) zl
-
-            else
-                let
-                    ( zh, zl ) =
-                        dShiftRightZfBy n ( xh, xl )
-                in
-                D (zh |> rotatedLowBits n xl) zl
+                        ( zh, zl ) =
+                            dShiftRightZfBy n_ ( xl, xh )
+                    in
+                        D (zh |> rotatedLowBits n_ xh) zl
+                else
+                    let
+                        ( zh, zl ) =
+                            dShiftRightZfBy n ( xh, xl )
+                    in
+                        D (zh |> rotatedLowBits n xl) zl
 
         _ ->
             Mismatch
@@ -433,7 +446,6 @@ dShiftRightZfBy n ( xh, xl ) =
         ( 0
         , safeShiftRightZfBy (n - 32) xh
         )
-
     else
         ( safeShiftRightZfBy n xh
         , (+)
@@ -448,6 +460,8 @@ dShiftRightZfBy n ( xh, xl ) =
 {-| Shift bits to the right by a given offset, filling new bits with zeros.
 
 [[[[[[[[[[[[https://en.wikipedia.org/wiki/Bitwise\_operation#Logical\_shift](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)](https://en.wikipedia.org/wiki/Bitwise_operation#Logical_shift)
+
+    import Word.Hex as Hex
 
     shiftRightZfBy 9 (W 0xFFFF) |> Hex.fromWord
     --> "0000007f"
@@ -474,7 +488,7 @@ shiftRightZfBy n word =
                 ( zh, zl ) =
                     dShiftRightZfBy n ( xh, xl )
             in
-            D zh zl
+                D zh zl
 
         _ ->
             Mismatch
@@ -482,12 +496,14 @@ shiftRightZfBy n word =
 
 {-| Bitwise and.
 
-    Word.and
+    import Word.Hex as Hex
+
+    and
         (W 0xFF00FF00)
         (W 0xFFFF0000) |> Hex.fromWord
     --> "ff000000"
 
-    Word.and
+    and
         (D 0xFF00FF00 0xFFFF0000)
         (D 0xFFFF0000 0xFF00FF00) |> Hex.fromWord
     --> "ff000000ff000000"
@@ -509,6 +525,8 @@ and wx wy =
 
 
 {-| Bitwise xor.
+
+    import Word.Hex as Hex
 
     Word.xor
         (W 0xFF00FF00)
@@ -538,11 +556,13 @@ xor wx wy =
 
 {-| Bitwise complement.
 
-    Word.complement
+    import Word.Hex as Hex
+
+    complement
         (W 0x00FF00FF) |> Hex.fromWord
     --> "ff00ff00"
 
-    Word.complement
+    complement
         (D 0x00FF00FF 0x00FF00FF) |> Hex.fromWord
     --> "ff00ff00ff00ff00"
 

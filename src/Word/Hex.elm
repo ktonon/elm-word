@@ -1,15 +1,16 @@
-module Word.Hex exposing
-    ( CharCount, fromInt, fromByte, fromWord, fromByteList, fromWordArray
-    , toByteList, toWordArray
-    )
+module Word.Hex
+    exposing
+        ( CharCount
+        , fromInt
+        , fromByte
+        , fromWord
+        , fromByteList
+        , fromWordArray
+        , toByteList
+        , toWordArray
+        )
 
 {-| Convert to and from strings of hexadecimal characters.
-
-Examples assume the following:
-
-    import Array
-    import Word exposing (Size(..), Word(..))
-
 
 ## From Other to Hex
 
@@ -62,7 +63,6 @@ fromIntAccumulator x =
         Char.fromCode
             (if x < 10 then
                 x + 48
-
              else
                 x + 97 - 10
             )
@@ -80,6 +80,8 @@ fromByte =
 
 
 {-| Convert a list of words to a string of hexadecimal characters.
+
+    import Word exposing (Word(..))
 
     W 16 |> fromWord
     --> "00000010"
@@ -116,7 +118,9 @@ fromByteList =
 
 {-| Convert an array of words to a string of hexadecimal characters.
 
-    Word.fromUTF8 Bit32 "I ❤ UTF strings!" |> fromWordArray
+    import Word exposing (Word(..))
+
+    Word.fromUTF8 Word.Bit32 "I ❤ UTF strings!" |> fromWordArray
     --> "4920e29da42055544620737472696e6773210000"
 
 -}
@@ -163,6 +167,8 @@ toIntList hex =
 
 {-| Convert a string of hexadecimal values to an array of words.
 
+    import Word exposing (Word(..))
+
     toWordArray Word.Bit32 "DEADBEEFdeadbeef" |> fromWordArray
     --> "deadbeefdeadbeef"
 
@@ -193,7 +199,7 @@ accHex2 chars acc =
                     ((x1 * 2 ^ 4) + x0)
                         |> (\byte -> List.append acc [ byte ])
             in
-            accHex2 rest acc2
+                accHex2 rest acc2
 
         [] ->
             acc
@@ -229,7 +235,7 @@ accHex8 chars acc =
                                 )
                             )
             in
-            accHex8 rest acc2
+                accHex8 rest acc2
 
         [] ->
             acc
@@ -273,7 +279,7 @@ accHex16 chars acc =
                                 )
                             )
             in
-            accHex16 rest acc2
+                accHex16 rest acc2
 
         [] ->
             acc
@@ -288,16 +294,14 @@ hexFromChar char =
         x =
             Char.toCode char
     in
-    if x < 65 then
-        -- assume valid 48 - 57 ('0' - '9')
-        x - 48
-
-    else if x > 70 then
-        -- assume valid 97 - 102 ('a' - 'f')
-        x - 87
-
-    else
-        x - 55
+        if x < 65 then
+            -- assume valid 48 - 57 ('0' - '9')
+            x - 48
+        else if x > 70 then
+            -- assume valid 97 - 102 ('a' - 'f')
+            x - 87
+        else
+            x - 55
 
 
 fromList : (a -> String) -> List a -> String
