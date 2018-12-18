@@ -1,12 +1,12 @@
-module WordTests exposing (..)
+module WordTests exposing (addTests, bigHex12800, bigHex25600, fromBytesTests, fromHexTests, max32, rotateLeftByTests, rotateRightByTests, shiftRightZfByTests)
 
 import Array
 import Expect exposing (Expectation)
 import Test exposing (..)
 import Word
     exposing
-        ( Size(Bit32, Bit64)
-        , Word(D, W)
+        ( Size(..)
+        , Word(..)
         , add
         , fromBytes
         , rotateLeftBy

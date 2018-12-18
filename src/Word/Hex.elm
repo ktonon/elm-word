@@ -1,21 +1,14 @@
-module Word.Hex
-    exposing
-        ( CharCount
-        , fromByte
-        , fromByteList
-        , fromInt
-        , fromWord
-        , fromWordArray
-        , toByteList
-        , toWordArray
-        )
+module Word.Hex exposing
+    ( CharCount, fromInt, fromByte, fromWord, fromByteList, fromWordArray
+    , toByteList, toWordArray
+    )
 
 {-| Convert to and from strings of hexadecimal characters.
 
 Examples assume the following:
 
     import Array
-    import Word exposing (Size(Bit32), Word(D, W))
+    import Word exposing (Size(..), Word(..))
 
 
 ## From Other to Hex
@@ -69,6 +62,7 @@ fromIntAccumulator x =
         Char.fromCode
             (if x < 10 then
                 x + 48
+
              else
                 x + 97 - 10
             )
@@ -194,10 +188,12 @@ accHex2 chars acc =
             let
                 ( x1, x0 ) =
                     ( hexFromChar h, hexFromChar l )
+
+                acc2 =
+                    ((x1 * 2 ^ 4) + x0)
+                        |> (\byte -> List.append acc [ byte ])
             in
-            ((x1 * 2 ^ 4) + x0)
-                |> (\byte -> List.append acc [ byte ])
-                |> accHex2 rest
+            accHex2 rest acc2
 
         [] ->
             acc
@@ -206,26 +202,34 @@ accHex2 chars acc =
             []
 
 
+type EightNibs
+    = EightNibs Int Int Int Int Int Int Int Int
+
+
 accHex8 : List Char -> Array Word -> Array Word
 accHex8 chars acc =
     case chars of
         x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ->
-            acc
-                |> Array.push
-                    (W
-                        (toInt32
-                            ( hexFromChar x7
-                            , hexFromChar x6
-                            , hexFromChar x5
-                            , hexFromChar x4
-                            , hexFromChar x3
-                            , hexFromChar x2
-                            , hexFromChar x1
-                            , hexFromChar x0
+            let
+                acc2 =
+                    acc
+                        |> Array.push
+                            (W
+                                (toInt32
+                                    (EightNibs
+                                        (hexFromChar x7)
+                                        (hexFromChar x6)
+                                        (hexFromChar x5)
+                                        (hexFromChar x4)
+                                        (hexFromChar x3)
+                                        (hexFromChar x2)
+                                        (hexFromChar x1)
+                                        (hexFromChar x0)
+                                    )
+                                )
                             )
-                        )
-                    )
-                |> accHex8 rest
+            in
+            accHex8 rest acc2
 
         [] ->
             acc
@@ -238,33 +242,38 @@ accHex16 : List Char -> Array Word -> Array Word
 accHex16 chars acc =
     case chars of
         x15 :: x14 :: x13 :: x12 :: x11 :: x10 :: x9 :: x8 :: x7 :: x6 :: x5 :: x4 :: x3 :: x2 :: x1 :: x0 :: rest ->
-            acc
-                |> Array.push
-                    (D
-                        (toInt32
-                            ( hexFromChar x15
-                            , hexFromChar x14
-                            , hexFromChar x13
-                            , hexFromChar x12
-                            , hexFromChar x11
-                            , hexFromChar x10
-                            , hexFromChar x9
-                            , hexFromChar x8
+            let
+                acc2 =
+                    acc
+                        |> Array.push
+                            (D
+                                (toInt32
+                                    (EightNibs
+                                        (hexFromChar x15)
+                                        (hexFromChar x14)
+                                        (hexFromChar x13)
+                                        (hexFromChar x12)
+                                        (hexFromChar x11)
+                                        (hexFromChar x10)
+                                        (hexFromChar x9)
+                                        (hexFromChar x8)
+                                    )
+                                )
+                                (toInt32
+                                    (EightNibs
+                                        (hexFromChar x7)
+                                        (hexFromChar x6)
+                                        (hexFromChar x5)
+                                        (hexFromChar x4)
+                                        (hexFromChar x3)
+                                        (hexFromChar x2)
+                                        (hexFromChar x1)
+                                        (hexFromChar x0)
+                                    )
+                                )
                             )
-                        )
-                        (toInt32
-                            ( hexFromChar x7
-                            , hexFromChar x6
-                            , hexFromChar x5
-                            , hexFromChar x4
-                            , hexFromChar x3
-                            , hexFromChar x2
-                            , hexFromChar x1
-                            , hexFromChar x0
-                            )
-                        )
-                    )
-                |> accHex16 rest
+            in
+            accHex16 rest acc2
 
         [] ->
             acc
@@ -282,9 +291,11 @@ hexFromChar char =
     if x < 65 then
         -- assume valid 48 - 57 ('0' - '9')
         x - 48
+
     else if x > 70 then
         -- assume valid 97 - 102 ('a' - 'f')
         x - 87
+
     else
         x - 55
 
@@ -303,8 +314,8 @@ fromArray toHex =
         ""
 
 
-toInt32 : ( Int, Int, Int, Int, Int, Int, Int, Int ) -> Int
-toInt32 ( x7, x6, x5, x4, x3, x2, x1, x0 ) =
+toInt32 : EightNibs -> Int
+toInt32 (EightNibs x7 x6 x5 x4 x3 x2 x1 x0) =
     x0
         + (x1 * 2 ^ 4)
         + (x2 * 2 ^ 8)
